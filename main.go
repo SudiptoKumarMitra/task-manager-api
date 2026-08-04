@@ -37,29 +37,37 @@ func usersHandler(w http.ResponseWriter, r *http.Request){
 			http.Error(w,"Method Not Allowed",http.StatusMethodNotAllowed)
 	}
 }
-func taskHandler(w http.ResponseWriter, r *http.Request){
-	switch r.Method {
-	case http.MethodGet:
-		if r.URL.Query().Get("id") != "" {
-			id, err := strconv.Atoi(r.URL.Query().Get("id"))
+
+func getID(r *http.Request) (int,error){
+	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	return id,err
+}
+
+func headerSet(w http.ResponseWriter){
+	w.Header().Set("Content-Type", "application/json")
+}
+func handleGetTask(w http.ResponseWriter, r *http.Request) {
+if r.URL.Query().Get("id") != "" {
+			id, err := getID(r)
 			if err != nil {
 				http.Error(w, "Invalid ID", http.StatusBadRequest)
 				return
 			}
 			for i := range Tasks {
 				if Tasks[i].ID == id {
-					w.Header().Set("Content-Type", "application/json")
+					headerSet(w)
 					json.NewEncoder(w).Encode(Tasks[i])
 					return
 				}
 			}
 			http.Error(w, "Task Not Found", http.StatusNotFound)
 		} else {
-			w.Header().Set("Content-type", "application/json")
+			headerSet(w)
 			json.NewEncoder(w).Encode(Tasks)
 		}
-	case http.MethodPost:
-		var task Task
+}
+func handlePostTask(w http.ResponseWriter, r *http.Request) {
+	var task Task
 		err := json.NewDecoder(r.Body).Decode(&task)
 		if err != nil{
 			http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -68,12 +76,13 @@ func taskHandler(w http.ResponseWriter, r *http.Request){
 		task.ID = nextID
 		nextID++
 		Tasks=append(Tasks,task)
-		w.Header().Set("Content-Type", "application/json")
+		headerSet(w)
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(task)
-	case http.MethodPut:
-		if r.URL.Query().Get("id") != "" {
-			id, err := strconv.Atoi(r.URL.Query().Get("id"))
+}
+func handlePutTask(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("id") != "" {
+			id, err := getID(r)
 			if err != nil {
 				http.Error(w, "Invalid ID", http.StatusBadRequest)
 				return
@@ -87,16 +96,17 @@ func taskHandler(w http.ResponseWriter, r *http.Request){
 			for i := range Tasks {
 				if Tasks[i].ID == id {
 				Tasks[i].Title = task.Title
-				w.Header().Set("Content-Type", "application/json")
+				headerSet(w)
 				json.NewEncoder(w).Encode(Tasks[i])
 				return
 				}
 			}
 			http.Error(w, "Task Not Found", http.StatusNotFound)
 		}
-	case http.MethodDelete:
-		if r.URL.Query().Get("id") != "" {
-			id,err := strconv.Atoi(r.URL.Query().Get("id"))
+}
+func handleDeleteTask(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("id") != "" {
+			id, err := getID(r)
 			if err != nil {
 				http.Error(w, "Invalid ID", http.StatusBadRequest)
 				return
@@ -104,13 +114,24 @@ func taskHandler(w http.ResponseWriter, r *http.Request){
 			for i := range Tasks{
 				if Tasks[i].ID == id {
 					Tasks=append(Tasks[:i],Tasks[i+1:]...)
-					w.Header().Set("Content-Type", "application/json")
+					headerSet(w)
 					json.NewEncoder(w).Encode("Task Deleted")
 					return
 				}
 			}
 			http.Error(w, "Task Not Found", http.StatusNotFound)
 		}
+}
+func taskHandler(w http.ResponseWriter, r *http.Request){
+	switch r.Method {
+	case http.MethodGet:
+		handleGetTask(w, r)
+	case http.MethodPost:
+		handlePostTask(w, r)
+	case http.MethodPut:
+		handlePutTask(w, r)
+	case http.MethodDelete:
+		handleDeleteTask(w, r)
 	default:
 		http.Error(w,"Method Not allowed", http.StatusMethodNotAllowed)
 	}
