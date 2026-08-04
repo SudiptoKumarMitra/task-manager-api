@@ -46,17 +46,14 @@ func taskHandler(w http.ResponseWriter, r *http.Request){
 				http.Error(w, "Invalid ID", http.StatusBadRequest)
 				return
 			}
-			if id > len(Tasks) || id < 1 {
-				http.Error(w, "Task Not Found", http.StatusNotFound)
-				return
-			}
-			for _, task := range Tasks {
-				if task.ID == id {
+			for i := range Tasks {
+				if Tasks[i].ID == id {
 					w.Header().Set("Content-Type", "application/json")
-					json.NewEncoder(w).Encode(task)
+					json.NewEncoder(w).Encode(Tasks[i])
 					return
 				}
 			}
+			http.Error(w, "Task Not Found", http.StatusNotFound)
 		} else {
 			w.Header().Set("Content-type", "application/json")
 			json.NewEncoder(w).Encode(Tasks)
@@ -75,9 +72,45 @@ func taskHandler(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(task)
 	case http.MethodPut:
-		fmt.Fprintln(w, "Task Updated")
+		if r.URL.Query().Get("id") != "" {
+			id, err := strconv.Atoi(r.URL.Query().Get("id"))
+			if err != nil {
+				http.Error(w, "Invalid ID", http.StatusBadRequest)
+				return
+			}
+			var task Task
+			err = json.NewDecoder(r.Body).Decode(&task)
+				if err != nil {
+					http.Error(w, "Invalid JSON", http.StatusBadRequest)
+					return
+				}
+			for i := range Tasks {
+				if Tasks[i].ID == id {
+				Tasks[i].Title = task.Title
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(Tasks[i])
+				return
+				}
+			}
+			http.Error(w, "Task Not Found", http.StatusNotFound)
+		}
 	case http.MethodDelete:
-		fmt.Fprintln(w, "Task Deleted")
+		if r.URL.Query().Get("id") != "" {
+			id,err := strconv.Atoi(r.URL.Query().Get("id"))
+			if err != nil {
+				http.Error(w, "Invalid ID", http.StatusBadRequest)
+				return
+			}
+			for i := range Tasks{
+				if Tasks[i].ID == id {
+					Tasks=append(Tasks[:i],Tasks[i+1:]...)
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode("Task Deleted")
+					return
+				}
+			}
+			http.Error(w, "Task Not Found", http.StatusNotFound)
+		}
 	default:
 		http.Error(w,"Method Not allowed", http.StatusMethodNotAllowed)
 	}
