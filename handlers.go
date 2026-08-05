@@ -99,7 +99,8 @@ func handlePutTask(w http.ResponseWriter, r *http.Request) {
 			http.Error(w,"Error in encoding JSON",http.StatusInternalServerError)
 			return
 		}
-		
+	} else {
+		http.Error(w, "Task Not Found", http.StatusNotFound)
 	}
 }
 func handleDeleteTask(w http.ResponseWriter, r *http.Request) {
@@ -109,18 +110,28 @@ func handleDeleteTask(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Invalid ID", http.StatusBadRequest)
 				return
 			}
-			for i := range Tasks{
-				if Tasks[i].ID == id {
-					Tasks=append(Tasks[:i],Tasks[i+1:]...)
-					if err := saveTasks(); err != nil {
-						http.Error(w, "Failed to save JSON", http.StatusInternalServerError)
-						return
-					}
-					headerSet(w)
-					json.NewEncoder(w).Encode("Task Deleted")
-					return
-				}
+			res,err := DB.Exec("DELETE FROM tasks WHERE id = $1",id)
+			if err != nil {
+				http.Error(w,"Error Occured in database",http.StatusInternalServerError)
+				return
 			}
-			http.Error(w, "Task Not Found", http.StatusNotFound)
+			affected,err := res.RowsAffected()
+			if err != nil {
+				http.Error(w,"Error Occured in database", http.StatusInternalServerError)
+				return
+			}
+			if affected == 0 {
+				http.Error(w,"Task NOt Found", http.StatusNotFound)
+				return
+			}
+			headerSet(w)
+			err = json.NewEncoder(w).Encode("message :Task Deleted")
+			if err != nil {
+				http.Error(w,"Error Occured in encoding JSON",http.StatusInternalServerError)
+				return
+			}
+		} else {
+			http.Error(w,"Task NOt Found", http.StatusBadRequest)
 		}
+
 }
