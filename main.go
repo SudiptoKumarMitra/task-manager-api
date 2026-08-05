@@ -3,6 +3,7 @@ import (
 	"fmt"
 	"net/http"
 	"log"
+	"github.com/gin-gonic/gin"
 )
 type User struct {
 	ID int `json:"id"`
@@ -35,30 +36,19 @@ func usersHandler(w http.ResponseWriter, r *http.Request){
 	}
 }
 
-func taskHandler(w http.ResponseWriter, r *http.Request){
-	switch r.Method {
-	case http.MethodGet:
-		handleGetTask(w, r)
-	case http.MethodPost:
-		handlePostTask(w, r)
-	case http.MethodPut:
-		handlePutTask(w, r)
-	case http.MethodDelete:
-		handleDeleteTask(w, r)
-	default:
-		http.Error(w,"Method Not allowed", http.StatusMethodNotAllowed)
-	}
-}
 func main() {
 	if err:= connectDB(); err!= nil{
 		log.Fatal("Failed to connect to database:", err)
 	}
 	log.Println("Connected to database successfully")	
-
+	r:= gin.Default()
 	http.HandleFunc("/",homeHandler)
 	http.HandleFunc("/health",healthHandler) 
-	http.HandleFunc("/tasks",taskHandler)
-	http.HandleFunc("/users",usersHandler)
+	r.GET("/tasks",handleGetTask)
+	r.GET("/tasks/:id",handleGetTask)
+	r.POST("/tasks",handlePostTask)
+	r.PUT("/tasks/:id",handlePutTask)
+	r.DELETE("/tasks/:id",handleDeleteTask)
 	fmt.Println("Server is running on port 8080")
-	http.ListenAndServe(":8080", nil)
+	r.Run(":8080")
 }
