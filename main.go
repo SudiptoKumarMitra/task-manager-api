@@ -51,6 +51,10 @@ func taskHandler(w http.ResponseWriter, r *http.Request){
 	}
 }
 func main() {
+	if err:= connectDB(); err!= nil{
+		log.Fatal("Failed to connect to database:", err)
+	}
+	log.Println("Connected to database successfully")	
 	if err := loadTasks(); err != nil {
 		log.Fatal("Failed to load tasks:", err)
 	}
