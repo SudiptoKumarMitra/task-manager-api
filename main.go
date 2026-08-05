@@ -13,8 +13,7 @@ type Task struct {
 	ID int `json:"id"`
 	Title string `json:"title"`
 }
-var Tasks = []Task{}
-var nextID = 1
+
 func homeHandler(w http.ResponseWriter, r *http.Request){
 	fmt.Fprintln(w, "Welcome to Task Manager API")
 }
@@ -55,9 +54,7 @@ func main() {
 		log.Fatal("Failed to connect to database:", err)
 	}
 	log.Println("Connected to database successfully")	
-	if err := loadTasks(); err != nil {
-		log.Fatal("Failed to load tasks:", err)
-	}
+
 	http.HandleFunc("/",homeHandler)
 	http.HandleFunc("/health",healthHandler) 
 	http.HandleFunc("/tasks",taskHandler)
