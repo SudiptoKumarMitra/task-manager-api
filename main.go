@@ -14,7 +14,14 @@ type Task struct {
 	ID int `json:"id"`
 	Title string `json:"title"`
 }
-
+type RegisterRequest struct {
+	Email string `json:"email"`
+	Password string `json:"password"`
+}
+type LoginRequest struct {
+	Email string `json:"email"`
+	Password string `json:"password"`
+}
 func homeHandler(w http.ResponseWriter, r *http.Request){
 	fmt.Fprintln(w, "Welcome to Task Manager API")
 }
@@ -46,7 +53,8 @@ func main() {
 	protected.Use(AuthMiddleware)
 	protected.GET("",handleGetTask)
 	protected.POST("",handlePostTask)
-	// r.POST("/tasks",handlePostTask)
+	r.POST("/register",handleRegister)
+	r.POST("/login",handleLogin)
 	r.PUT("/tasks/:id",handlePutTask)
 	r.DELETE("/tasks/:id",handleDeleteTask)
 	fmt.Println("Server is running on port 8080")

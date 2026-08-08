@@ -4,12 +4,15 @@ import (
 	"fmt"
 )
 
-func generateToken() (string , error){
+func generateToken(user_id int, role string) (string , error){
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,jwt.MapClaims{
-		"user_id": 10,
-		"role" : "user",
+		"user_id": user_id,
+		"role" : role,
 	})
-	signed_token,_:= token.SignedString([]byte("my-secret"))
+	signed_token,err:= token.SignedString([]byte("my-secret"))
+	if err != nil {
+		return "",err
+	}
 	return signed_token,nil
 }
 func validateToken(tokenString string) (jwt.MapClaims , error){

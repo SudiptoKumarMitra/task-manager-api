@@ -3,6 +3,7 @@ import (
 	"net/http"
 	"github.com/gin-gonic/gin"
 	"strconv"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func handleGetTask(c *gin.Context) {
@@ -197,5 +198,68 @@ func handleDeleteTask(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK,gin.H{
 		"message" : "Task Deleted",
+	})
+}
+func handleRegister(c *gin.Context) {
+	var request RegisterRequest
+	err := c.ShouldBindJSON(&request)
+	if err != nil{
+		c.JSON(http.StatusBadRequest,gin.H{
+			"error" : "Invalid JSON",
+		})
+		return
+	}
+	hasedPassword,err := bcrypt.GenerateFromPassword([]byte(request.Password),bcrypt.DefaultCost)
+	if err != nil{
+		c.JSON(http.StatusInternalServerError,gin.H{
+			"error" : "Failed to generate password",
+		})
+		return
+	}
+	_, err = DB.Exec("INSERT INTO users (email,password) VALUES ($1,$2)",request.Email,string(hasedPassword))
+	if err != nil{
+		c.JSON(http.StatusInternalServerError,gin.H{
+			"error" : "Failed to insert into database",
+		})
+		return
+	}
+	c.JSON(http.StatusCreated,gin.H{
+		"message" : "User Created",
+	})
+}
+func handleLogin(c *gin.Context) {
+	var req LoginRequest
+	err := c.ShouldBindJSON(&req)
+	if err != nil{
+		c.JSON(http.StatusBadRequest,gin.H{
+			"error" : "Invalid JSON",
+		})
+		return
+	}
+	var hashedPassword,role string
+	var userID int
+	err = DB.QueryRow("SELECT id, password, role FROM users WHERE email = $1",req.Email).Scan(&userID,&hashedPassword,&role)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized,gin.H{
+			"error" : "Invalid Credentials",
+		})
+		return
+	}
+	err =bcrypt.CompareHashAndPassword([]byte(hashedPassword),[]byte(req.Password))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized,gin.H{
+			"error" : "Invalid Credentials",
+		})
+		return
+	}
+	tokenString,err := generateToken(userID,role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError,gin.H{
+			"error" : "Failed to generate token",
+		})
+		return
+	}
+	c.JSON(http.StatusOK,gin.H{
+		"token" : tokenString,
 	})
 }
