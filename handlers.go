@@ -115,7 +115,21 @@ func handlePutTask(c *gin.Context) {
 		})
 		return
 	}
-	res,err := DB.Exec("UPDATE tasks SET title = $1 WHERE id = $2",task.Title,id)
+	userIDValue,ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized",
+		})
+		return
+	}
+	userID,ok := userIDValue.(int)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized",
+		})
+		return
+	}
+	res,err := DB.Exec("UPDATE tasks SET title = $1 WHERE id = $2 AND user_id = $3",task.Title,id,userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,gin.H{
 			"error" : "Error in updating data",
@@ -147,7 +161,21 @@ func handleDeleteTask(c *gin.Context) {
 		})
 		return
 	}
-	res,err := DB.Exec("DELETE FROM tasks WHERE id = $1",id)
+	userIDValue,ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized",
+		})
+		return
+	}
+	userID,ok := userIDValue.(int)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized",
+		})
+		return
+	}
+	res,err := DB.Exec("DELETE FROM tasks WHERE id = $1 AND  user_id = $2",id,userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,gin.H{
 			"error" : "Error Occured in database",
@@ -162,7 +190,7 @@ func handleDeleteTask(c *gin.Context) {
 		return
 	}
 	if affected == 0 {
-		c.JSON(http.StatusBadRequest,gin.H{
+		c.JSON(http.StatusNotFound,gin.H{
 			"error" : "Task not found",
 		})
 		return
