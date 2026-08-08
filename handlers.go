@@ -6,6 +6,20 @@ import (
 )
 
 func handleGetTask(c *gin.Context) {
+	userIDValue,ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized",
+		})
+		return
+	}
+	userID,ok := userIDValue.(int)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized",
+		})
+		return
+	}
 	idstr:=c.Param("id")
 	if idstr != "" {
 		id,err:=strconv.Atoi(idstr)
@@ -16,7 +30,7 @@ func handleGetTask(c *gin.Context) {
 			return
 		}
 		var task Task
-		err = DB.QueryRow("SELECT id,title FROM tasks WHERE id = $1",id).Scan(&task.ID,&task.Title)
+		err = DB.QueryRow("SELECT id,title FROM tasks WHERE id = $1 AND user_id = $2",id,userID).Scan(&task.ID,&task.Title)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": "Task not found",
@@ -25,7 +39,7 @@ func handleGetTask(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK,task)
 	} else {
-		rows,err := DB.Query("SELECT id,title FROM tasks;")
+		rows,err := DB.Query("SELECT id,title FROM tasks WHERE user_id = $1;",userID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to connect with database",
@@ -58,9 +72,22 @@ func handlePostTask(c *gin.Context) {
 		})
 		return
 	}
-
+	userIDValue,ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized",
+		})
+		return
+	}
+	userID,ok := userIDValue.(int)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Unauthorized",
+		})
+		return
+	}
 	var id int
-	err = DB.QueryRow("INSERT INTO tasks (title) VALUES ($1) RETURNING id",task.Title).Scan(&id)
+	err = DB.QueryRow("INSERT INTO tasks (title, user_id) VALUES ($1,$2) RETURNING id",task.Title,userID).Scan(&id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,gin.H{
 			"error" : "Failed to Insert into database",
