@@ -2,10 +2,18 @@ package main
 import(
 	"database/sql"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"fmt"
 )
 var DB *sql.DB
 func connectDB()error {
-	connectionString:="host=localhost port=5432 user=postgres password=sudipto dbname=taskmanager sslmode=disable"
+	connectionString := fmt.Sprintf(
+    "host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+    config.DBHost,
+    config.DBPort,
+    config.DBUser,
+    config.DBPassword,
+    config.DBName,
+)
 	var err error
 	DB,err=sql.Open("pgx",connectionString)
 	if err != nil {

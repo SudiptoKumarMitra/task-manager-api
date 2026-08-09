@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"log"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	"os"
 )
 type User struct {
 	ID int `json:"id"`
@@ -22,28 +24,50 @@ type LoginRequest struct {
 	Email string `json:"email"`
 	Password string `json:"password"`
 }
+type Config struct {
+	JWT_SECRET string 
+	PORT string 
+	DBHost string
+	DBPort string
+	DBUser string
+	DBPassword string
+	DBName string
+}
+func loadConfig() Config {
+	return Config{
+		JWT_SECRET: os.Getenv("JWT_SECRET"),
+		PORT: os.Getenv("PORT"),
+		DBHost: os.Getenv("DB_HOST"),
+		DBPort: os.Getenv("DB_PORT"),
+		DBUser: os.Getenv("DB_USER"),
+		DBPassword: os.Getenv("DB_PASSWORD"),
+		DBName: os.Getenv("DB_NAME"),
+	}
+}
+var config Config
 func homeHandler(w http.ResponseWriter, r *http.Request){
 	fmt.Fprintln(w, "Welcome to Task Manager API")
 }
 func healthHandler(w http.ResponseWriter, r *http.Request){
 	fmt.Fprintln(w, "Server is healthy")
 }
-func usersHandler(w http.ResponseWriter, r *http.Request){
-	switch r.Method {
-		case http.MethodGet:
-			fmt.Fprintln(w, "User List")
-		case http.MethodPost:
-			fmt.Fprintln(w, "User Created")
-		case http.MethodPut:
-			fmt.Fprintln(w, "User Updated")
-		case http.MethodDelete:
-			fmt.Fprintln(w, "User Deleted")
-		default:
-			http.Error(w,"Method Not Allowed",http.StatusMethodNotAllowed)
-	}
-}
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	config = loadConfig()
+	if config.JWT_SECRET == "" {
+		log.Fatal("JWT_SECRET is not set in .env file")
+	}
+	if config.DBHost == "" ||
+    config.DBPort == "" ||
+    config.DBUser == "" ||
+    config.DBPassword == "" ||
+    config.DBName == "" {
+    log.Fatal("Database configuration is incomplete")
+	}
 	if err:= connectDB(); err!= nil{
 		log.Fatal("Failed to connect to database:", err)
 	}
@@ -58,5 +82,5 @@ func main() {
 	r.PUT("/tasks/:id",handlePutTask)
 	r.DELETE("/tasks/:id",handleDeleteTask)
 	fmt.Println("Server is running on port 8080")
-	r.Run(":8080")
+	r.Run(":"+config.PORT)
 }

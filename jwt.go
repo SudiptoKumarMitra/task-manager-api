@@ -4,12 +4,12 @@ import (
 	"fmt"
 )
 
-func generateToken(user_id int, role string) (string , error){
+func generateToken(user_id int, role string, secret string) (string , error){
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,jwt.MapClaims{
 		"user_id": user_id,
 		"role" : role,
 	})
-	signed_token,err:= token.SignedString([]byte("my-secret"))
+	signed_token,err:= token.SignedString([]byte(secret))
 	if err != nil {
 		return "",err
 	}
@@ -21,7 +21,7 @@ func validateToken(tokenString string) (jwt.MapClaims , error){
 			return nil, fmt.Errorf("invalid signing algorithm") 
 			
 		}
-		return ([]byte("my-secret")) , nil
+		return ([]byte(config.JWT_SECRET)), nil
 	})
 	if err != nil{
 		return nil, fmt.Errorf("Invalid Token")

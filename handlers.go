@@ -252,7 +252,7 @@ func handleLogin(c *gin.Context) {
 		})
 		return
 	}
-	tokenString,err := generateToken(userID,role)
+	tokenString,err := generateToken(userID,role,config.JWT_SECRET)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,gin.H{
 			"error" : "Failed to generate token",
