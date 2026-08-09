@@ -6,15 +6,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"os"
+	"task-manager-api/repository"
 )
 type User struct {
 	ID int `json:"id"`
 	Name string `json:"name"`
 	Age int `json:"age"`
-}
-type Task struct {
-	ID int `json:"id"`
-	Title string `json:"title"`
 }
 type RegisterRequest struct {
 	Email string `json:"email"`
@@ -44,6 +41,7 @@ func loadConfig() Config {
 		DBName: os.Getenv("DB_NAME"),
 	}
 }
+
 var config Config
 func homeHandler(w http.ResponseWriter, r *http.Request){
 	fmt.Fprintln(w, "Welcome to Task Manager API")
@@ -72,15 +70,18 @@ func main() {
 		log.Fatal("Failed to connect to database:", err)
 	}
 	log.Println("Connected to database successfully")	
+	taskrepo := repository.TaskRepository{DB:DB}
+	handler := Handler{TaskRepo:taskrepo}
 	r:= gin.Default()
-	protected := r.Group("/tasks")
-	protected.Use(AuthMiddleware)
-	protected.GET("",handleGetTask)
-	protected.POST("",handlePostTask)
+	r.GET("/tasks",AuthMiddleware,handler.handleGetTask)
+	// protected := r.Group("/tasks")
+	// protected.Use(AuthMiddleware)
+	// protected.GET("",handleGetTask)
+	r.POST("/tasks",AuthMiddleware,handler.handlePostTask)
 	r.POST("/register",handleRegister)
 	r.POST("/login",handleLogin)
-	r.PUT("/tasks/:id",handlePutTask)
-	r.DELETE("/tasks/:id",handleDeleteTask)
+	r.PUT("/tasks/:id",AuthMiddleware,handler.handlePutTask)
+	r.DELETE("/tasks/:id",AuthMiddleware,handler.handleDeleteTask)
 	fmt.Println("Server is running on port 8080")
 	r.Run(":"+config.PORT)
 }

@@ -4,9 +4,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"strconv"
 	"golang.org/x/crypto/bcrypt"
+	"task-manager-api/repository"
+	"task-manager-api/models"
 )
-
-func handleGetTask(c *gin.Context) {
+ type Handler struct {
+	TaskRepo repository.TaskRepository
+}
+func (h *Handler) handleGetTask(c *gin.Context) {
 	userIDValue,ok := c.Get("user_id")
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -30,8 +34,7 @@ func handleGetTask(c *gin.Context) {
 			})
 			return
 		}
-		var task Task
-		err = DB.QueryRow("SELECT id,title FROM tasks WHERE id = $1 AND user_id = $2",id,userID).Scan(&task.ID,&task.Title)
+		task,err := h.TaskRepo.GetTaskByID(id,userID)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": "Task not found",
@@ -40,32 +43,20 @@ func handleGetTask(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK,task)
 	} else {
-		rows,err := DB.Query("SELECT id,title FROM tasks WHERE user_id = $1;",userID)
+		tasks,err := h.TaskRepo.GetTasksByUser(userID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to connect with database",
 			})
 			return
 		}
-		defer rows.Close()
-		var tasks []Task
-		for rows.Next() {
-			var task Task
-			err := rows.Scan(&task.ID, &task.Title)
-				if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Error in fetching data",
-			})
-				return
-			}
-			tasks=append(tasks,task)
-		}
+		
 		c.JSON(http.StatusOK,tasks)
 	}
 }
 
-func handlePostTask(c *gin.Context) {
-	var task Task
+func (h *Handler) handlePostTask(c *gin.Context) {
+	var task models.Task
 	err := c.ShouldBindJSON(&task)
 	if err != nil{
 		c.JSON(http.StatusBadRequest,gin.H{
@@ -87,19 +78,17 @@ func handlePostTask(c *gin.Context) {
 		})
 		return
 	}
-	var id int
-	err = DB.QueryRow("INSERT INTO tasks (title, user_id) VALUES ($1,$2) RETURNING id",task.Title,userID).Scan(&id)
+	createdTask,err := h.TaskRepo.CreateTask(task.Title,userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,gin.H{
 			"error" : "Failed to Insert into database",
 		})
 		return
 	}
-	task.ID = id
-	c.JSON(http.StatusCreated,task)
+	c.JSON(http.StatusCreated,createdTask)
 }
 
-func handlePutTask(c *gin.Context) {
+func (h *Handler) handlePutTask(c *gin.Context) {
 	idstr := c.Param("id")
 	id, err := strconv.Atoi(idstr)
 	if err != nil {
@@ -108,7 +97,7 @@ func handlePutTask(c *gin.Context) {
 		})
 		return
 	}
-	var task Task
+	var task models.Task
 	err = c.ShouldBindJSON(&task)
 	if err != nil{
 		c.JSON(http.StatusBadRequest,gin.H{
@@ -130,31 +119,27 @@ func handlePutTask(c *gin.Context) {
 		})
 		return
 	}
-	res,err := DB.Exec("UPDATE tasks SET title = $1 WHERE id = $2 AND user_id = $3",task.Title,id,userID)
+	check,err := h.TaskRepo.UpdateTask(task.Title,id,userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError,gin.H{
-			"error" : "Error in updating data",
+    c.JSON(http.StatusInternalServerError, gin.H{
+        "error": "Error occurred in database",
+    })
+    return
+	}
+
+	if !check {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Task not found",
 		})
 		return
 	}
-	affected,err := res.RowsAffected()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError,gin.H{
-			"error" : "Error in database",
-		})
-		return
-	}
-	if affected == 0 {
-		c.JSON(http.StatusNotFound,gin.H{
-			"error" : "NO task exists with this ID",
-		})
-		return
-	}
-	task.ID=id
-	c.JSON(http.StatusOK,task)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Task Deleted",
+	})
 }
 
-func handleDeleteTask(c *gin.Context) {
+func (h *Handler) handleDeleteTask(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest,gin.H{
@@ -176,28 +161,23 @@ func handleDeleteTask(c *gin.Context) {
 		})
 		return
 	}
-	res,err := DB.Exec("DELETE FROM tasks WHERE id = $1 AND  user_id = $2",id,userID)
+	deleted,err := h.TaskRepo.DeleteTask(id,userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError,gin.H{
-			"error" : "Error Occured in database",
+    c.JSON(http.StatusInternalServerError, gin.H{
+        "error": "Error occurred in database",
+    })
+    return
+	}
+
+	if !deleted {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Task not found",
 		})
 		return
 	}
-	affected,err := res.RowsAffected()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError,gin.H{
-			"error" : "Error Occured in database",
-		})
-		return
-	}
-	if affected == 0 {
-		c.JSON(http.StatusNotFound,gin.H{
-			"error" : "Task not found",
-		})
-		return
-	}
-	c.JSON(http.StatusOK,gin.H{
-		"message" : "Task Deleted",
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Task Deleted",
 	})
 }
 func handleRegister(c *gin.Context) {
