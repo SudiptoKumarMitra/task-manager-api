@@ -73,7 +73,9 @@ func main() {
 	log.Println("Connected to database successfully")	
 	taskrepo := repository.TaskRepository{DB:DB}
 	taskservice := service.Taskservice{TaskRepo:taskrepo}
-	handler := Handler{TaskService:taskservice,TaskRepo:taskrepo}
+	userrepo := repository.UserRepo{DB:DB}
+	userservice := service.UserService{UserRepo:userrepo}
+	handler := Handler{TaskService:taskservice, TaskRepo:taskrepo, UserService:userservice}
 	r:= gin.Default()
 	r.GET("/tasks",AuthMiddleware,handler.handleGetTask)
 	r.GET("/tasks/:id",AuthMiddleware,handler.handleGetTask)
@@ -81,7 +83,7 @@ func main() {
 	// protected.Use(AuthMiddleware)
 	// protected.GET("",handleGetTask)
 	r.POST("/tasks",AuthMiddleware,handler.handlePostTask)
-	r.POST("/register",handleRegister)
+	r.POST("/register",handler.handleRegister)
 	r.POST("/login",handleLogin)
 	r.PUT("/tasks/:id",AuthMiddleware,handler.handlePutTask)
 	r.DELETE("/tasks/:id",AuthMiddleware,handler.handleDeleteTask)

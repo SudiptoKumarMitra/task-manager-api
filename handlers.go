@@ -11,7 +11,8 @@ import (
 )
  type Handler struct {
 	TaskService service.Taskservice
-	TaskRepo repository.TaskRepository	
+	TaskRepo repository.TaskRepository
+	UserService service.UserService
 }
 func (h *Handler) handleGetTask(c *gin.Context) {
 	userIDValue,ok := c.Get("user_id")
@@ -193,7 +194,7 @@ func (h *Handler) handleDeleteTask(c *gin.Context) {
 		"message": "Task Deleted",
 	})
 }
-func handleRegister(c *gin.Context) {
+func (h *Handler) handleRegister(c *gin.Context) {
 	var request RegisterRequest
 	err := c.ShouldBindJSON(&request)
 	if err != nil{
@@ -202,15 +203,26 @@ func handleRegister(c *gin.Context) {
 		})
 		return
 	}
-	hasedPassword,err := bcrypt.GenerateFromPassword([]byte(request.Password),bcrypt.DefaultCost)
+	err = h.UserService.RegisterUser(request.Email,request.Password)
 	if err != nil{
-		c.JSON(http.StatusInternalServerError,gin.H{
-			"error" : "Failed to generate password",
-		})
-		return
-	}
-	_, err = DB.Exec("INSERT INTO users (email,password) VALUES ($1,$2)",request.Email,string(hasedPassword))
-	if err != nil{
+		if errors.Is(err,service.ErrEmptyEmail) {
+			c.JSON(http.StatusBadRequest,gin.H{
+				"error" : "Email cannot be empty",
+			})
+			return
+		}
+		if errors.Is(err,service.ErrEmptyPassword) {
+			c.JSON(http.StatusBadRequest,gin.H{
+				"error" : "Password cannot be empty",
+			})
+			return
+		}
+		if errors.Is(err,service.PasswordTooShort) {
+			c.JSON(http.StatusBadRequest,gin.H{
+				"error" : "Password must be at least 6 characters",
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError,gin.H{
 			"error" : "Failed to insert into database",
 		})
