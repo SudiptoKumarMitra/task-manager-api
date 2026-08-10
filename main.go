@@ -7,6 +7,7 @@ import (
 	"github.com/joho/godotenv"
 	"os"
 	"task-manager-api/repository"
+	"task-manager-api/service"
 )
 type User struct {
 	ID int `json:"id"`
@@ -71,9 +72,11 @@ func main() {
 	}
 	log.Println("Connected to database successfully")	
 	taskrepo := repository.TaskRepository{DB:DB}
-	handler := Handler{TaskRepo:taskrepo}
+	taskservice := service.Taskservice{TaskRepo:taskrepo}
+	handler := Handler{TaskService:taskservice,TaskRepo:taskrepo}
 	r:= gin.Default()
 	r.GET("/tasks",AuthMiddleware,handler.handleGetTask)
+	r.GET("/tasks/:id",AuthMiddleware,handler.handleGetTask)
 	// protected := r.Group("/tasks")
 	// protected.Use(AuthMiddleware)
 	// protected.GET("",handleGetTask)

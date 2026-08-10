@@ -6,9 +6,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"task-manager-api/repository"
 	"task-manager-api/models"
+	"task-manager-api/service"
+	"errors"
 )
  type Handler struct {
-	TaskRepo repository.TaskRepository
+	TaskService service.Taskservice
+	TaskRepo repository.TaskRepository	
 }
 func (h *Handler) handleGetTask(c *gin.Context) {
 	userIDValue,ok := c.Get("user_id")
@@ -34,7 +37,7 @@ func (h *Handler) handleGetTask(c *gin.Context) {
 			})
 			return
 		}
-		task,err := h.TaskRepo.GetTaskByID(id,userID)
+		task,err := h.TaskService.GetTaskByID(id,userID)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": "Task not found",
@@ -43,7 +46,7 @@ func (h *Handler) handleGetTask(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK,task)
 	} else {
-		tasks,err := h.TaskRepo.GetTasksByUser(userID)
+		tasks,err := h.TaskService.GetTasksByUser(userID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed to connect with database",
@@ -78,8 +81,14 @@ func (h *Handler) handlePostTask(c *gin.Context) {
 		})
 		return
 	}
-	createdTask,err := h.TaskRepo.CreateTask(task.Title,userID)
+	createdTask,err := h.TaskService.CreateTask(task.Title,userID)
 	if err != nil {
+		if errors.Is(err, service.ErrEmptyTitle) {
+			c.JSON(http.StatusBadRequest,gin.H{
+				"error" : "Title cannot be empty",
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError,gin.H{
 			"error" : "Failed to Insert into database",
 		})
@@ -119,10 +128,16 @@ func (h *Handler) handlePutTask(c *gin.Context) {
 		})
 		return
 	}
-	check,err := h.TaskRepo.UpdateTask(task.Title,id,userID)
+	check,err := h.TaskService.UpdateTask(task.Title,id,userID)
 	if err != nil {
+		if errors.Is(err,service.ErrEmptyTitle) {
+			c.JSON(http.StatusBadRequest,gin.H{
+				"error" : "Title cannot be empty",
+			})
+			return
+		}
     c.JSON(http.StatusInternalServerError, gin.H{
-        "error": "Error occurred in database",
+        "error": "Failed to update task",
     })
     return
 	}
@@ -133,10 +148,8 @@ func (h *Handler) handlePutTask(c *gin.Context) {
 		})
 		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Task Deleted",
-	})
+	task.ID = id	
+	c.JSON(http.StatusOK,task)
 }
 
 func (h *Handler) handleDeleteTask(c *gin.Context) {
@@ -161,7 +174,7 @@ func (h *Handler) handleDeleteTask(c *gin.Context) {
 		})
 		return
 	}
-	deleted,err := h.TaskRepo.DeleteTask(id,userID)
+	deleted,err := h.TaskService.DeleteTask(id,userID)
 	if err != nil {
     c.JSON(http.StatusInternalServerError, gin.H{
         "error": "Error occurred in database",
