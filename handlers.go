@@ -3,7 +3,6 @@ import (
 	"net/http"
 	"github.com/gin-gonic/gin"
 	"strconv"
-	"golang.org/x/crypto/bcrypt"
 	"task-manager-api/repository"
 	"task-manager-api/models"
 	"task-manager-api/service"
@@ -232,8 +231,8 @@ func (h *Handler) handleRegister(c *gin.Context) {
 		"message" : "User Created",
 	})
 }
-func handleLogin(c *gin.Context) {
-	var req LoginRequest
+func (h *Handler) handleLogin(c *gin.Context) {
+	var req models.LoginRequest
 	err := c.ShouldBindJSON(&req)
 	if err != nil{
 		c.JSON(http.StatusBadRequest,gin.H{
@@ -241,23 +240,32 @@ func handleLogin(c *gin.Context) {
 		})
 		return
 	}
-	var hashedPassword,role string
-	var userID int
-	err = DB.QueryRow("SELECT id, password, role FROM users WHERE email = $1",req.Email).Scan(&userID,&hashedPassword,&role)
+	user,err :=h.UserService.LoginUser(req.Email, req.Password)
 	if err != nil {
+		if errors.Is(err,service.ErrEmptyEmail) {
+			c.JSON(http.StatusBadRequest,gin.H{
+				"error" : "Email cannot be empty",
+			})
+			return
+		}
+		if errors.Is(err,service.ErrEmptyPassword) {
+			c.JSON(http.StatusBadRequest,gin.H{
+				"error" : "Password cannot be empty",
+			})
+			return
+		}
+		if errors.Is(err,service.PasswordTooShort) {
+			c.JSON(http.StatusBadRequest,gin.H{
+				"error" : "Password must be at least 6 characters",
+			})
+			return
+		}
 		c.JSON(http.StatusUnauthorized,gin.H{
 			"error" : "Invalid Credentials",
 		})
 		return
 	}
-	err =bcrypt.CompareHashAndPassword([]byte(hashedPassword),[]byte(req.Password))
-	if err != nil {
-		c.JSON(http.StatusUnauthorized,gin.H{
-			"error" : "Invalid Credentials",
-		})
-		return
-	}
-	tokenString,err := generateToken(userID,role,config.JWT_SECRET)
+	tokenString,err := generateToken(user.ID,user.Role,config.JWT_SECRET)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError,gin.H{
 			"error" : "Failed to generate token",

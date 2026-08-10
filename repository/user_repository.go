@@ -1,7 +1,7 @@
 package repository
 import (
 	"database/sql"
-	"github.com/jackc/pgx/v5/pgconn"
+	"task-manager-api/models"
 )
 type UserRepo struct{
  DB *sql.DB
@@ -12,4 +12,12 @@ func (r *UserRepo) RegisterUser(email string, hashedPassword string) error{
 		return err
 	}
 	return nil
+}
+func (r *UserRepo) GetUserByEmail(email string) (models.User,error){
+	var user models.User
+	err := r.DB.QueryRow("SELECT id, email, password, role From users WHERE email = $1",email).Scan(&user.ID,&user.Email,&user.Password,&user.Role)
+	if err != nil {
+		return user,err
+	}
+	return user,nil
 }

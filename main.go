@@ -84,7 +84,7 @@ func main() {
 	// protected.GET("",handleGetTask)
 	r.POST("/tasks",AuthMiddleware,handler.handlePostTask)
 	r.POST("/register",handler.handleRegister)
-	r.POST("/login",handleLogin)
+	r.POST("/login",handler.handleLogin)
 	r.PUT("/tasks/:id",AuthMiddleware,handler.handlePutTask)
 	r.DELETE("/tasks/:id",AuthMiddleware,handler.handleDeleteTask)
 	fmt.Println("Server is running on port 8080")
