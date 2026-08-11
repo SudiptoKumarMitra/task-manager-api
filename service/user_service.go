@@ -1,17 +1,15 @@
 package service
 import(
-	"errors"
 	"golang.org/x/crypto/bcrypt"
 	"task-manager-api/repository"
 	"strings"
 	"task-manager-api/models"
+	"database/sql"
 )
 type UserService struct{
 	UserRepo repository.UserRepo
 }
-var ErrEmptyEmail = errors.New("Email cannot be empty")
-var ErrEmptyPassword = errors.New("Password cannot be empty")
-var PasswordTooShort = errors.New("Password must be at least 6 characters")
+
 func (S *UserService) RegisterUser(email string, password string) error{
 	email = strings.TrimSpace(email)
 	if email == "" {
@@ -42,11 +40,14 @@ func (S *UserService) LoginUser(email string, password string) (models.User,erro
 	}
 	user,err := S.UserRepo.GetUserByEmail(email)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return models.User{},ErrInvalidCredentials
+		}
 		return models.User{},err
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password),[]byte(password))
 	if err != nil {
-		return models.User{},err
+		return models.User{},ErrInvalidCredentials
 	}
 	return user,nil
 }

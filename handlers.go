@@ -7,6 +7,7 @@ import (
 	"task-manager-api/models"
 	"task-manager-api/service"
 	"errors"
+	"task-manager-api/utils"
 )
  type Handler struct {
 	TaskService service.Taskservice
@@ -194,12 +195,19 @@ func (h *Handler) handleDeleteTask(c *gin.Context) {
 	})
 }
 func (h *Handler) handleRegister(c *gin.Context) {
-	var request RegisterRequest
+	var request models.RegisterRequest
 	err := c.ShouldBindJSON(&request)
 	if err != nil{
+		validationmessage := utils.FormatValidationErrors(err)
+		if  len(validationmessage) > 0 {
+			c.JSON(http.StatusBadRequest,gin.H{
+				"errors" : validationmessage,
+			})	
+			return	
+			}
 		c.JSON(http.StatusBadRequest,gin.H{
 			"error" : "Invalid JSON",
-		})
+			})
 		return
 	}
 	err = h.UserService.RegisterUser(request.Email,request.Password)
@@ -222,6 +230,12 @@ func (h *Handler) handleRegister(c *gin.Context) {
 			})
 			return
 		}
+		if errors.Is(err,service.ExistEmailError) {
+			c.JSON(http.StatusConflict,gin.H{
+				"error" : "Email already exists",
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError,gin.H{
 			"error" : "Failed to insert into database",
 		})
@@ -235,35 +249,30 @@ func (h *Handler) handleLogin(c *gin.Context) {
 	var req models.LoginRequest
 	err := c.ShouldBindJSON(&req)
 	if err != nil{
+		validationmessage := utils.FormatValidationErrors(err)
+		if len(validationmessage) > 0 {
+			c.JSON(http.StatusBadRequest,gin.H{
+				"errors" : validationmessage,
+			})	
+			return	
+			}
 		c.JSON(http.StatusBadRequest,gin.H{
 			"error" : "Invalid JSON",
 		})
 		return
 	}
 	user,err :=h.UserService.LoginUser(req.Email, req.Password)
-	if err != nil {
-		if errors.Is(err,service.ErrEmptyEmail) {
-			c.JSON(http.StatusBadRequest,gin.H{
-				"error" : "Email cannot be empty",
+	if err != nil{
+		if errors.Is(err,service.ErrInvalidCredentials) {
+			c.JSON(http.StatusUnauthorized,gin.H{
+				"error" : "Invalid Credentials",
 			})
 			return
-		}
-		if errors.Is(err,service.ErrEmptyPassword) {
-			c.JSON(http.StatusBadRequest,gin.H{
-				"error" : "Password cannot be empty",
+			}
+			c.JSON(http.StatusInternalServerError,gin.H{
+				"error" : "Internal Server Error",
 			})
 			return
-		}
-		if errors.Is(err,service.PasswordTooShort) {
-			c.JSON(http.StatusBadRequest,gin.H{
-				"error" : "Password must be at least 6 characters",
-			})
-			return
-		}
-		c.JSON(http.StatusUnauthorized,gin.H{
-			"error" : "Invalid Credentials",
-		})
-		return
 	}
 	tokenString,err := generateToken(user.ID,user.Role,config.JWT_SECRET)
 	if err != nil {

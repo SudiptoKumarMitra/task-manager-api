@@ -14,14 +14,7 @@ type User struct {
 	Name string `json:"name"`
 	Age int `json:"age"`
 }
-type RegisterRequest struct {
-	Email string `json:"email"`
-	Password string `json:"password"`
-}
-type LoginRequest struct {
-	Email string `json:"email"`
-	Password string `json:"password"`
-}
+
 type Config struct {
 	JWT_SECRET string 
 	PORT string 

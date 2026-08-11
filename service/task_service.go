@@ -3,12 +3,10 @@ import (
 	"task-manager-api/repository"
 	"task-manager-api/models"
 	"strings"
-	"errors"
 )
 type Taskservice struct{
 	TaskRepo repository.TaskRepository
 }
-var ErrEmptyTitle = errors.New("Title cannot be empty")
 func (S *Taskservice) GetTasksByUser(userID int) ([]models.Task,error){
 	return S.TaskRepo.GetTasksByUser(userID)
 }
