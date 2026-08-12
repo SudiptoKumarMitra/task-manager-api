@@ -10,6 +10,6 @@ var (
 	ErrEmptyPassword      = errors.New("Password cannot be empty")
 	PasswordTooShort      = errors.New("Password must be at least 6 characters")
 	ErrInvalidCredentials = errors.New("Invalid Credentials")
-	ExistEmailError       = errors.New("email already exists")
+	ExistEmailError       = errors.New("Email already exists")
 	ErrTaskNotFound       = errors.New("Task not found")
 )

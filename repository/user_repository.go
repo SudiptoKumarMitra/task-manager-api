@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/jackc/pgx/v5/pgconn"
+	"task-manager-api/apperrors"
 	"task-manager-api/models"
 )
 
@@ -11,15 +12,13 @@ type UserRepo struct {
 	DB *sql.DB
 }
 
-var ExistEmailError = errors.New("email already exists")
-
 func (r *UserRepo) RegisterUser(email string, hashedPassword string) error {
 	_, err := r.DB.Exec("INSERT INTO users (email,password) VALUES ($1,$2)", email, hashedPassword)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23505" {
-				return ExistEmailError
+				return apperrors.ExistEmailError
 			}
 		}
 		return err
