@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
@@ -17,7 +16,6 @@ func AuthMiddleware(c *gin.Context) {
 		return
 	}
 	tokenString := strings.TrimPrefix(authorization, "Bearer ")
-	fmt.Println(tokenString)
 	claims, err := validateToken(tokenString)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
