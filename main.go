@@ -1,63 +1,72 @@
 package main
+
 import (
-	"fmt"
-	"net/http"
+	"errors"
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"log"
+	"os"
+	"task-manager-api/repository"
+	"task-manager-api/service"
 )
-type User struct {
-	ID int `json:"id"`
-	Name string `json:"name"`
-	Age int `json:"age"`
+
+type Config struct {
+	JWT_SECRET string
+	PORT       string
+	DBHost     string
+	DBPort     string
+	DBUser     string
+	DBPassword string
+	DBName     string
 }
-type Task struct {
-	ID int `json:"id"`
-	Title string `json:"title"`
-}
-var Tasks = []Task{}
-var nextID = 1
-func homeHandler(w http.ResponseWriter, r *http.Request){
-	fmt.Fprintln(w, "Welcome to Task Manager API")
-}
-func healthHandler(w http.ResponseWriter, r *http.Request){
-	fmt.Fprintln(w, "Server is healthy")
-}
-func usersHandler(w http.ResponseWriter, r *http.Request){
-	switch r.Method {
-		case http.MethodGet:
-			fmt.Fprintln(w, "User List")
-		case http.MethodPost:
-			fmt.Fprintln(w, "User Created")
-		case http.MethodPut:
-			fmt.Fprintln(w, "User Updated")
-		case http.MethodDelete:
-			fmt.Fprintln(w, "User Deleted")
-		default:
-			http.Error(w,"Method Not Allowed",http.StatusMethodNotAllowed)
+
+func loadConfig() Config {
+	return Config{
+		JWT_SECRET: os.Getenv("JWT_SECRET"),
+		PORT:       os.Getenv("PORT"),
+		DBHost:     os.Getenv("DB_HOST"),
+		DBPort:     os.Getenv("DB_PORT"),
+		DBUser:     os.Getenv("DB_USER"),
+		DBPassword: os.Getenv("DB_PASSWORD"),
+		DBName:     os.Getenv("DB_NAME"),
 	}
 }
 
-func taskHandler(w http.ResponseWriter, r *http.Request){
-	switch r.Method {
-	case http.MethodGet:
-		handleGetTask(w, r)
-	case http.MethodPost:
-		handlePostTask(w, r)
-	case http.MethodPut:
-		handlePutTask(w, r)
-	case http.MethodDelete:
-		handleDeleteTask(w, r)
-	default:
-		http.Error(w,"Method Not allowed", http.StatusMethodNotAllowed)
-	}
-}
+var config Config
+
 func main() {
-	if err := loadTasks(); err != nil {
-		log.Fatal("Failed to load tasks:", err)
+	err := godotenv.Load()
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Fatal("Error loading .env file")
 	}
-	http.HandleFunc("/",homeHandler)
-	http.HandleFunc("/health",healthHandler) 
-	http.HandleFunc("/tasks",taskHandler)
-	http.HandleFunc("/users",usersHandler)
-	fmt.Println("Server is running on port 8080")
-	http.ListenAndServe(":8080", nil)
+	config = loadConfig()
+	if config.JWT_SECRET == "" {
+		log.Fatal("JWT_SECRET is not set in .env file")
+	}
+	if config.DBHost == "" ||
+		config.DBPort == "" ||
+		config.DBUser == "" ||
+		config.DBPassword == "" ||
+		config.DBName == "" {
+		log.Fatal("Database configuration is incomplete")
+	}
+	if err := connectDB(); err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+	log.Println("Connected to database successfully")
+	taskrepo := &repository.TaskRepository{DB: DB}
+	taskservice := service.Taskservice{TaskRepo: taskrepo}
+	userrepo := &repository.UserRepo{DB: DB}
+	userservice := service.UserService{UserRepo: userrepo}
+	handler := Handler{TaskService: taskservice, UserService: userservice}
+	r := gin.Default()
+	r.GET("/tasks", AuthMiddleware, handler.handleGetTask)
+	r.GET("/tasks/:id", AuthMiddleware, handler.handleGetTask)
+	r.POST("/tasks", AuthMiddleware, handler.handlePostTask)
+	r.POST("/register", handler.handleRegister)
+	r.POST("/login", handler.handleLogin)
+	r.PUT("/tasks/:id", AuthMiddleware, handler.handlePutTask)
+	r.DELETE("/tasks/:id", AuthMiddleware, handler.handleDeleteTask)
+	log.Printf("Server is running on port %s", config.PORT)
+	r.Run(":" + config.PORT)
 }

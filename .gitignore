@@ -1,0 +1,8 @@
+# Go binaries
+task-manager-api
+*.exe
+
+# Environment files
+.env
+AGENTS.md
+PROJECT_STATUS.md
