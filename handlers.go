@@ -7,14 +7,12 @@ import (
 	"strconv"
 	"task-manager-api/apperrors"
 	"task-manager-api/models"
-	"task-manager-api/repository"
 	"task-manager-api/service"
 	"task-manager-api/utils"
 )
 
 type Handler struct {
 	TaskService service.Taskservice
-	TaskRepo    repository.TaskRepository
 	UserService service.UserService
 }
 

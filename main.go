@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"log"
@@ -9,12 +9,6 @@ import (
 	"task-manager-api/repository"
 	"task-manager-api/service"
 )
-
-type User struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-	Age  int    `json:"age"`
-}
 
 type Config struct {
 	JWT_SECRET string
@@ -42,7 +36,7 @@ var config Config
 
 func main() {
 	err := godotenv.Load()
-	if err != nil {
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		log.Fatal("Error loading .env file")
 	}
 	config = loadConfig()
@@ -73,6 +67,6 @@ func main() {
 	r.POST("/login", handler.handleLogin)
 	r.PUT("/tasks/:id", AuthMiddleware, handler.handlePutTask)
 	r.DELETE("/tasks/:id", AuthMiddleware, handler.handleDeleteTask)
-	fmt.Println("Server is running on port 8080")
+	log.Printf("Server is running on port %s", config.PORT)
 	r.Run(":" + config.PORT)
 }

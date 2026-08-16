@@ -5,3 +5,4 @@ task-manager-api
 # Environment files
 .env
 AGENTS.md
+PROJECT_STATUS.md
